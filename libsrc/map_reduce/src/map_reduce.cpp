@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <atomic>
 #include <thread>
+#include <exception>
 
 Job& Job::setInputFiles(std::vector<std::string> filenames) {
     for (auto filename : filenames) {
@@ -29,6 +30,15 @@ Job& Job::setMapper(Job::mapper_t callback) {
 Job& Job::setReducer(Job::reducer_t callback) {
     _reducer = callback;
     return *this;
+}
+
+void showMap(std::map<std::string, size_t>& m) {
+    std::cout << "Map Debug :\n";
+    for (auto &el : m)
+    {
+        std::cout << el.first << " : " << el.second << "\n";
+    }
+    std::cout << std::endl;
 }
 
 void Job::start() {
@@ -88,40 +98,66 @@ void Job::start() {
         global_tasks[i % _n_workers].push_back(tasks[i]);
     }
 
-    auto thread_work = [&global_accum](size_t n, mapper_t mapper, std::vector<std::string> worker_tasks) {
-        pairs_t accum;
+    auto thread_work = [&global_accum](size_t n, 
+                                        mapper_t mapper,
+                                        std::vector<std::string> worker_tasks) {
+        std::map<std::string, size_t> accum{};
+        std::map<std::string, size_t> map_result{};
         for (auto filename: worker_tasks) {
             std::ifstream file(filename);
-            std::string line;
+            std::string line, split;
             while (std::getline(file, line)) {
-                // if (accum.empty())
-                //     accum = mapper(line);
-                // else {
-                // }
+                if (split.empty()) split = line;
+                else split += " " + line;
             }
             file.close();
+
+            map_result = mapper(split);
+            for (auto &pair : map_result)
+            {
+                auto key = pair.first;
+                auto value = pair.second;
+                if (accum.find(key) != accum.end())
+                    accum[key] += value;
+                else
+                    accum[key] = value;
+            }
         }
-        global_accum[n] = accum;
+        global_accum[n] = std::move(accum);
     };
 
     std::vector<std::thread> ts(_n_workers);
+
     for (size_t i = 0; i < _n_workers; i++) {
         std::thread t(thread_work, i, _mapper, global_tasks[i]);
-    }
-
-    for (size_t i = 0; i < _n_workers; i++) {
-        ts[i].join();
-    }
-
-    for (auto i: global_accum) {
-        std::cout << "--" << std::endl;
-        for (auto j: i) {
-            std::cout << j.first << std::endl;
-        }
+        ts.push_back(std::move(t));
     }
 
     /**
     [Sync]
+    **/
+    size_t joined_cnt = 0;
+    while (joined_cnt < _n_workers)
+    {
+        for (auto &t : ts)
+        {
+            if (t.joinable())
+            {
+                t.join();
+                joined_cnt++;
+            }
+        }
+    }
+
+    // DEBUG :
+    for (auto i: global_accum) {
+        std::cout << "--" << std::endl;
+        for (auto j: i) {
+            std::cout << j.first << " : " << j.second << std::endl;
+        }
+    }
+
+    /**
     [Shuffle stage]
     - Собираем новый vector<map> в котором len = [количество редьюсеров], группировка по ключам
             Количество всех уникальных ключей по всем аккумам - K_all

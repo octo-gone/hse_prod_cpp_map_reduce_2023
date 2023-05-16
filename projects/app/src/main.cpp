@@ -7,7 +7,7 @@ int main() {
         .setMaxWorkers(4)
         .setMapper([](std::string text_split)
         {
-            std::map<std::string, size_t> pair_accum;
+            std::map<std::string, size_t> pair_accum{};
 
             // splits by any space char
             std::stringstream ss(text_split);
