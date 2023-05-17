@@ -19,10 +19,10 @@ private:
     reducer_t _reducer;
 
 public:
-    Job &setInputFiles(std::vector<std::string>);
-    Job &setTmpFolder(std::string);
-    Job &setMaxWorkers(size_t);
-    Job &setMapper(mapper_t);
-    Job &setReducer(reducer_t);
+    Job& set_input_files(std::vector<std::string>);
+    Job& set_tmp_folder(std::string);
+    Job& set_max_workers(size_t);
+    Job& set_mapper(mapper_t);
+    Job& set_reducer(reducer_t);
     void start();
 };

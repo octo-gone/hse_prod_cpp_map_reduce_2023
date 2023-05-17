@@ -4,35 +4,54 @@
 #include <atomic>
 #include <thread>
 #include <exception>
+#include <filesystem>
 
-Job& Job::setInputFiles(std::vector<std::string> filenames) {
+
+namespace fs = std::filesystem;
+
+Job& Job::set_input_files(std::vector<std::string> filenames) {
+    /*
+    TODO: check if they are valid
+        auto status = fs::status(filename);
+        fs::exists(status) && fs::is_regular_file(status)
+    */
     for (auto filename : filenames) {
         _filenames.push_back(filename);
     }
     return *this;
 }
 
-Job& Job::setTmpFolder(std::string folder) {
+Job& Job::set_tmp_folder(std::string folder) {
+    /*
+    TODO: if tmp folder is not set then use temp dir or use `tmpfile` for tmp files
+        _tmp_folder = std::filesystem::temp_directory_path().string();
+    */
+    auto status = fs::status(folder);
+    if (!fs::exists(status)) {
+        std::cout << "`Job::set_tmp_folder`: provided folder don't exists, creating it" << std::endl;
+        fs::create_directories(folder);
+    } else if (!fs::is_directory(status))
+        throw std::runtime_error("`Job::set_tmp_folder`: provided folder is not a directory");
     _tmp_folder = folder;
     return *this;
 }
 
-Job& Job::setMaxWorkers(size_t n_workers) {
+Job& Job::set_max_workers(size_t n_workers) {
     _n_workers = n_workers;
     return *this;
 }
 
-Job& Job::setMapper(Job::mapper_t callback) {
+Job& Job::set_mapper(Job::mapper_t callback) {
     _mapper = callback;
     return *this;
 }
 
-Job& Job::setReducer(Job::reducer_t callback) {
+Job& Job::set_reducer(Job::reducer_t callback) {
     _reducer = callback;
     return *this;
 }
 
-void showMap(std::map<std::string, size_t>& m) {
+void show_map(std::map<std::string, size_t>& m) {
     std::cout << "Map Debug :\n";
     for (auto &el : m)
     {
@@ -98,9 +117,7 @@ void Job::start() {
         global_tasks[i % _n_workers].push_back(tasks[i]);
     }
 
-    auto thread_work = [&global_accum](size_t n, 
-                                        mapper_t mapper,
-                                        std::vector<std::string> worker_tasks) {
+    auto thread_work = [&global_accum](size_t n, mapper_t mapper, std::vector<std::string> worker_tasks) {
         std::map<std::string, size_t> accum{};
         std::map<std::string, size_t> map_result{};
         for (auto filename: worker_tasks) {
@@ -113,8 +130,7 @@ void Job::start() {
             file.close();
 
             map_result = mapper(split);
-            for (auto &pair : map_result)
-            {
+            for (auto &pair : map_result) {
                 auto key = pair.first;
                 auto value = pair.second;
                 if (accum.find(key) != accum.end())
@@ -137,12 +153,9 @@ void Job::start() {
     [Sync]
     **/
     size_t joined_cnt = 0;
-    while (joined_cnt < _n_workers)
-    {
-        for (auto &t : ts)
-        {
-            if (t.joinable())
-            {
+    while (joined_cnt < _n_workers) {
+        for (auto &t : ts) {
+            if (t.joinable()) {
                 t.join();
                 joined_cnt++;
             }
@@ -150,13 +163,18 @@ void Job::start() {
     }
 
     // DEBUG :
-    for (auto i: global_accum) {
-        std::cout << "--" << std::endl;
-        for (auto j: i) {
-            std::cout << j.first << " : " << j.second << std::endl;
-        }
-    }
+    // for (auto i: global_accum) {
+    //     std::cout << "--" << std::endl;
+    //     for (auto j: i) {
+    //         std::cout << j.first << " : " << j.second << std::endl;
+    //     }
+    // }
 
+    for (auto task_filename: tasks) {
+        fs::remove(task_filename);
+    }
+    std::error_code ec;
+    fs::remove(_tmp_folder, ec);
     /**
     [Shuffle stage]
     - Собираем новый vector<map> в котором len = [количество редьюсеров], группировка по ключам

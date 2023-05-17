@@ -2,11 +2,10 @@
 
 int main() {
     Job j;
-    j.setInputFiles({"../examples/file_001.txt", "../examples/file_002.txt"})
-        .setTmpFolder("../bin/splits")
-        .setMaxWorkers(4)
-        .setMapper([](std::string text_split)
-        {
+    j.set_input_files({"../examples/file_001.txt", "../examples/file_002.txt"})
+        .set_tmp_folder("../bin/split")
+        .set_max_workers(4)
+        .set_mapper([](std::string text_split) {
             std::map<std::string, size_t> pair_accum{};
 
             // splits by any space char
@@ -23,8 +22,7 @@ int main() {
 
             return pair_accum;
         })
-        .setReducer([](Job::pairs_t pairs)
-        {
+        .set_reducer([](Job::pairs_t pairs) {
             std::map<std::string, size_t> pair_accum;
             for (auto &pair : pairs)
             {
