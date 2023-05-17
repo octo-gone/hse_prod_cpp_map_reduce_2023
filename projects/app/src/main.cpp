@@ -4,7 +4,8 @@ int main() {
     Job j;
     j.set_input_files({"../examples/file_001.txt", "../examples/file_002.txt"})
         .set_tmp_folder("../bin/split")
-        .set_max_workers(4)
+        .set_max_mappers(4)
+        .set_max_reducers(2)
         .set_mapper([](std::string text_split) {
             std::map<std::string, size_t> pair_accum{};
 
@@ -12,8 +13,7 @@ int main() {
             std::stringstream ss(text_split);
             std::string word;
 
-            while (ss >> word)
-            {
+            while (ss >> word) {
                 if (pair_accum.find(word) != pair_accum.end())
                     pair_accum[word] += 1;
                 else
@@ -22,19 +22,13 @@ int main() {
 
             return pair_accum;
         })
-        .set_reducer([](Job::pairs_t pairs) {
-            std::map<std::string, size_t> pair_accum;
-            for (auto &pair : pairs)
-            {
-                auto key = pair.first;
-                auto value = pair.second;
-                if (pair_accum.find(key) != pair_accum.end())
-                    pair_accum[key] += value;
-                else
-                    pair_accum[key] = value;
+        .set_reducer([](std::string key, std::vector<size_t> values) {
+            size_t value = 0;
+            for (auto &v : values) {
+                value += v;
             }
 
-            return pair_accum;
+            return value;
         });
 
     j.start();

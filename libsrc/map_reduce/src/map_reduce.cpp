@@ -42,8 +42,13 @@ Job& Job::set_tmp_folder(std::string folder) {
     return *this;
 }
 
-Job& Job::set_max_workers(size_t n_workers) {
-    _n_workers = n_workers;
+Job& Job::set_max_mappers(size_t n_mappers) {
+    _n_mappers = n_mappers;
+    return *this;
+}
+
+Job& Job::set_max_reducers(size_t n_reducers) {
+    _n_reducers = n_reducers;
     return *this;
 }
 
@@ -116,14 +121,14 @@ void Job::start() {
         -Отработав, каждый маппер складывает свой аккум в свою ячейку в векторе аккумуляторов
     **/
 
-    std::vector<std::vector<std::string>> global_tasks(_n_workers);
-    std::vector<pairs_t> global_accum(_n_workers);
+    std::vector<std::vector<std::string>> mappers_tasks(_n_mappers);
+    std::vector<pairs_t> global_accum(_n_mappers);
 
     for (size_t i = 0; i < tasks.size(); i++) {
-        global_tasks[i % _n_workers].push_back(tasks[i]);
+        mappers_tasks[i % _n_mappers].push_back(tasks[i]);
     }
 
-    auto thread_work = [&global_accum](size_t n, mapper_t mapper, std::vector<std::string> worker_tasks) {
+    auto mapper_work = [&global_accum](size_t n, mapper_t mapper, std::vector<std::string> worker_tasks) {
         std::map<std::string, size_t> accum{};
         std::map<std::string, size_t> map_result{};
         for (auto filename: worker_tasks) {
@@ -148,10 +153,10 @@ void Job::start() {
         global_accum[n] = std::move(accum);
     };
 
-    std::vector<std::thread> ts(_n_workers);
+    std::vector<std::thread> ts(_n_mappers);
 
-    for (size_t i = 0; i < _n_workers; i++) {
-        std::thread t(thread_work, i, _mapper, global_tasks[i]);
+    for (size_t i = 0; i < _n_mappers; i++) {
+        std::thread t(mapper_work, i, _mapper, mappers_tasks[i]);
         ts.push_back(std::move(t));
     }
 
@@ -159,7 +164,7 @@ void Job::start() {
     [Sync]
     **/
     size_t joined_cnt = 0;
-    while (joined_cnt < _n_workers) {
+    while (joined_cnt < _n_mappers) {
         for (auto &t : ts) {
             if (t.joinable()) {
                 t.join();
@@ -176,17 +181,65 @@ void Job::start() {
     //     }
     // }
 
-    for (auto task_filename: tasks) {
-        fs::remove(task_filename);
-    }
-    std::error_code ec;
-    fs::remove(_tmp_folder, ec);
     /**
     [Shuffle stage]
     - Собираем новый vector<map> в котором len = [количество редьюсеров], группировка по ключам
             Количество всех уникальных ключей по всем аккумам - K_all
             Количество редьюсеров - R
             Количество групп ключей на одном редьюсере ceil(K_all / R), остаток групп распределяется
-
     **/
+    std::map<std::string, std::vector<size_t>> shuffled_accum;
+
+    for (auto accum: global_accum) {
+        for (auto pair: accum) {
+            shuffled_accum[pair.first].push_back(pair.second);
+        }
+    }
+
+    std::vector<std::map<std::string, std::vector<size_t>>> reducers_tasks(_n_reducers);
+    size_t key_cnt = 0;
+
+    for (auto pair: shuffled_accum) {
+        reducers_tasks[key_cnt % _n_reducers][pair.first] = std::move(pair.second);
+        key_cnt++;
+    }
+
+    pairs_t result;
+
+    auto reducer_work = [&result](reducer_t reducer, std::map<std::string, std::vector<size_t>> worker_task) {
+        for (auto pair: worker_task) {
+            result[pair.first] = reducer(pair.first, pair.second);
+        }
+    };
+
+    ts = std::vector<std::thread>(_n_reducers);
+
+    for (size_t i = 0; i < _n_reducers; i++) {
+        std::thread t(reducer_work, _reducer, reducers_tasks[i]);
+        ts.push_back(std::move(t));
+    }
+
+    /**
+    [Sync]
+    **/
+    joined_cnt = 0;
+    while (joined_cnt < _n_reducers) {
+        for (auto &t : ts) {
+            if (t.joinable()) {
+                t.join();
+                joined_cnt++;
+            }
+        }
+    }
+
+    show_map(result);
+
+    /*
+    [Cleanup]
+    */
+    for (auto task_filename: tasks) {
+        fs::remove(task_filename);
+    }
+    std::error_code ec;
+    fs::remove(_tmp_folder, ec);
 }
