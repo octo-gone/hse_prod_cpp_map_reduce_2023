@@ -9,26 +9,32 @@
 
 namespace fs = std::filesystem;
 
+
 Job& Job::set_input_files(std::vector<std::string> filenames) {
-    /*
-    TODO: check if they are valid
-        auto status = fs::status(filename);
-        fs::exists(status) && fs::is_regular_file(status)
-    */
     for (auto filename : filenames) {
-        _filenames.push_back(filename);
+        auto status = fs::status(filename);
+        if (!fs::exists(status) && !fs::is_regular_file(status))
+#ifndef NDEBUG
+            std::cout << "`Job::set_input_files`: provided filename '"
+                + filename + "' don't exist or is not a regular file, excluding it" << std::endl;
+#else
+            throw std::runtime_error("`Job::set_input_files`: provided filename '"
+                + filename + "' don't exist or is not a regular file, excluding it");
+#endif
+        else
+            _filenames.push_back(filename);
     }
     return *this;
 }
 
 Job& Job::set_tmp_folder(std::string folder) {
-    /*
-    TODO: if tmp folder is not set then use temp dir or use `tmpfile` for tmp files
-        _tmp_folder = std::filesystem::temp_directory_path().string();
-    */
     auto status = fs::status(folder);
     if (!fs::exists(status)) {
+#ifndef NDEBUG
         std::cout << "`Job::set_tmp_folder`: provided folder don't exist, creating it" << std::endl;
+#else
+        throw std::runtime_error("`Job::set_tmp_folder`: provided folder don't exist, creating it");
+#endif
         fs::create_directories(folder);
     } else if (!fs::is_directory(status))
         throw std::runtime_error("`Job::set_tmp_folder`: provided folder is not a directory");
