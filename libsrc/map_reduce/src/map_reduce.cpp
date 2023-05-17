@@ -27,6 +27,11 @@ Job& Job::set_input_files(std::vector<std::string> filenames) {
     return *this;
 }
 
+Job& Job::set_output_file(std::string filename) {
+    _output_file = filename;
+    return *this;
+}
+
 Job& Job::set_tmp_folder(std::string folder) {
     auto status = fs::status(folder);
     if (!fs::exists(status)) {
@@ -64,11 +69,19 @@ Job& Job::set_reducer(Job::reducer_t callback) {
 
 void show_map(std::map<Job::K, Job::V>& m) {
     std::cout << "{" << std::endl;
-    for (auto &el : m)
-    {
+    for (auto &el : m) {
         std::cout << "  \"" << el.first << "\" : " << el.second << "," << std::endl;
     }
     std::cout << "}" << std::endl;
+}
+
+void write_map_to_file(std::map<Job::K, Job::V>& m, std::string filename) {
+    std::ofstream file(filename);
+    file << "{" << std::endl;
+    for (auto &el : m) {
+        file << "  \"" << el.first << "\" : " << el.second << "," << std::endl;
+    }
+    file << "}" << std::endl;
 }
 
 void Job::start() {
@@ -213,6 +226,8 @@ void Job::start() {
             }
         }
     }
+
+    write_map_to_file(result, _output_file);
 
     /*
     [Cleanup]

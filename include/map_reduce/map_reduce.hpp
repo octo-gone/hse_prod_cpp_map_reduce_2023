@@ -16,6 +16,7 @@ public:
 
 private:
     std::vector<std::string> _filenames = {};
+    std::string _output_file;
     std::string _tmp_folder;
     size_t _n_mappers;
     size_t _n_reducers;
@@ -24,6 +25,7 @@ private:
 
 public:
     Job& set_input_files(std::vector<std::string>);
+    Job& set_output_file(std::string);
     Job& set_tmp_folder(std::string);
     Job& set_max_mappers(size_t);
     Job& set_max_reducers(size_t);
