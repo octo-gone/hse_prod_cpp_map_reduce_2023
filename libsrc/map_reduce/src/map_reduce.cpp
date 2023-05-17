@@ -62,20 +62,18 @@ Job& Job::set_reducer(Job::reducer_t callback) {
     return *this;
 }
 
-void show_map(std::map<std::string, size_t>& m) {
-    std::cout << "Map Debug :\n";
+void show_map(std::map<Job::K, Job::V>& m) {
+    std::cout << "{" << std::endl;
     for (auto &el : m)
     {
-        std::cout << el.first << " : " << el.second << "\n";
+        std::cout << "  \"" << el.first << "\" : " << el.second << "," << std::endl;
     }
-    std::cout << std::endl;
+    std::cout << "}" << std::endl;
 }
 
 void Job::start() {
-    /**Flow:
-    [Split stage]:
-    - Сплитуем входные файлы из папки data/input/ и кладём в data/splits/
-    (можно сделать многопоточно один поток на один файл)
+    /**
+    [Split stage]
     **/
 
     size_t file_cnt = 0;
@@ -111,14 +109,7 @@ void Job::start() {
         file_cnt++;
     }
     /**
-    [Map stage]:
-    - Перед тем как запустить мапперы расчитаем их число и выделим vector<map> вектор аккумуляторов
-    - Каждый сплит это таск для маппера: !!!(1 воркер один аккум)
-        - Мап_воркер1 берёт сплит1 ->(создаёт) мап_аккум1 [беря результат с _mapper(сплит1)],
-                далее сплит2 ->(обновляет) мап_аккум1 [результатом _mapper(сплит2)], и т.д
-        - Мап_воркер2 делает тоже самое на своём диапозоне сплитов сохраняя результат в свой мап_аккум2
-        ...
-        -Отработав, каждый маппер складывает свой аккум в свою ячейку в векторе аккумуляторов
+    [Map stage]
     **/
 
     std::vector<std::vector<std::string>> mappers_tasks(_n_mappers);
@@ -129,8 +120,8 @@ void Job::start() {
     }
 
     auto mapper_work = [&global_accum](size_t n, mapper_t mapper, std::vector<std::string> worker_tasks) {
-        std::map<std::string, size_t> accum{};
-        std::map<std::string, size_t> map_result{};
+        std::map<K, V> accum{};
+        std::map<K, V> map_result{};
         for (auto filename: worker_tasks) {
             std::ifstream file(filename);
             std::string line, split;
@@ -173,22 +164,10 @@ void Job::start() {
         }
     }
 
-    // DEBUG :
-    // for (auto i: global_accum) {
-    //     std::cout << "--" << std::endl;
-    //     for (auto j: i) {
-    //         std::cout << j.first << " : " << j.second << std::endl;
-    //     }
-    // }
-
     /**
     [Shuffle stage]
-    - Собираем новый vector<map> в котором len = [количество редьюсеров], группировка по ключам
-            Количество всех уникальных ключей по всем аккумам - K_all
-            Количество редьюсеров - R
-            Количество групп ключей на одном редьюсере ceil(K_all / R), остаток групп распределяется
     **/
-    std::map<std::string, std::vector<size_t>> shuffled_accum;
+    pairs_lists_t shuffled_accum;
 
     for (auto accum: global_accum) {
         for (auto pair: accum) {
@@ -196,7 +175,7 @@ void Job::start() {
         }
     }
 
-    std::vector<std::map<std::string, std::vector<size_t>>> reducers_tasks(_n_reducers);
+    std::vector<pairs_lists_t> reducers_tasks(_n_reducers);
     size_t key_cnt = 0;
 
     for (auto pair: shuffled_accum) {
@@ -204,9 +183,12 @@ void Job::start() {
         key_cnt++;
     }
 
+    /**
+    [Reducing]
+    **/
     pairs_t result;
 
-    auto reducer_work = [&result](reducer_t reducer, std::map<std::string, std::vector<size_t>> worker_task) {
+    auto reducer_work = [&result](reducer_t reducer, pairs_lists_t worker_task) {
         for (auto pair: worker_task) {
             result[pair.first] = reducer(pair.first, pair.second);
         }
@@ -231,8 +213,6 @@ void Job::start() {
             }
         }
     }
-
-    show_map(result);
 
     /*
     [Cleanup]

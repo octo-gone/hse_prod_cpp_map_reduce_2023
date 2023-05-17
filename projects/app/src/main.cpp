@@ -2,10 +2,10 @@
 
 int main() {
     Job j;
-    j.set_input_files({"../examples/file_001.txt", "../examples/file_002.txt"})
+    j.set_input_files({"../examples/war_and_peace.txt"})
         .set_tmp_folder("../bin/split")
         .set_max_mappers(4)
-        .set_max_reducers(2)
+        .set_max_reducers(4)
         .set_mapper([](std::string text_split) {
             std::map<std::string, size_t> pair_accum{};
 

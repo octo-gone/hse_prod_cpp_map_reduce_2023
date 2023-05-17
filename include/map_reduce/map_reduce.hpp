@@ -7,9 +7,12 @@
 
 class Job {
 public:
-    using pairs_t = std::map<std::string, size_t>;
-    using mapper_t = std::function<pairs_t(std::string)>;
-    using reducer_t = std::function<size_t(std::string, std::vector<size_t>)>;
+    using K = std::string;
+    using V = size_t;
+    using pairs_t = std::map<K, V>;
+    using pairs_lists_t = std::map<K, std::vector<V>>;
+    using mapper_t = std::function<pairs_t(K)>;
+    using reducer_t = std::function<size_t(K, std::vector<V>)>;
 
 private:
     std::vector<std::string> _filenames = {};
