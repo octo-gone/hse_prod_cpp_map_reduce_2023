@@ -35,11 +35,7 @@ Job& Job::set_output_file(std::string filename) {
 Job& Job::set_tmp_folder(std::string folder) {
     auto status = fs::status(folder);
     if (!fs::exists(status)) {
-#ifndef NDEBUG
         std::cout << "`Job::set_tmp_folder`: provided folder don't exist, creating it" << std::endl;
-#else
-        throw std::runtime_error("`Job::set_tmp_folder`: provided folder don't exist, creating it");
-#endif
         fs::create_directories(folder);
     } else if (!fs::is_directory(status))
         throw std::runtime_error("`Job::set_tmp_folder`: provided folder is not a directory");
@@ -67,21 +63,21 @@ Job& Job::set_reducer(Job::reducer_t callback) {
     return *this;
 }
 
-void show_map(std::map<Job::K, Job::V>& m) {
-    std::cout << "{" << std::endl;
-    for (auto &el : m) {
-        std::cout << "  \"" << el.first << "\" : " << el.second << "," << std::endl;
-    }
-    std::cout << "}" << std::endl;
-}
-
-void write_map_to_file(std::map<Job::K, Job::V>& m, std::string filename) {
+void Job::write_map_to_file(std::map<Job::K, Job::V>& m, std::string filename) {
     std::ofstream file(filename);
     file << "{" << std::endl;
     for (auto &el : m) {
         file << "  \"" << el.first << "\" : " << el.second << "," << std::endl;
     }
     file << "}" << std::endl;
+}
+
+void show_map(std::map<Job::K, Job::V>& m) {
+    std::cout << "{" << std::endl;
+    for (auto &el : m) {
+        std::cout << "  \"" << el.first << "\" : " << el.second << "," << std::endl;
+    }
+    std::cout << "}" << std::endl;
 }
 
 void Job::start() {

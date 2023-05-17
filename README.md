@@ -9,6 +9,7 @@
     or<br>
     `cmake -D CMAKE_BUILD_TYPE=Debug ..`
 5. `make`
+6. `ctest` to run tests
 
 Now in bin folder will be example application.
 

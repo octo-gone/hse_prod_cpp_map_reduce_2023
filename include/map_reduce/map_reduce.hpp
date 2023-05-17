@@ -32,4 +32,7 @@ public:
     Job& set_mapper(mapper_t);
     Job& set_reducer(reducer_t);
     void start();
+
+private:
+    void write_map_to_file(std::map<Job::K, Job::V>&, std::string);
 };
