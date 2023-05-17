@@ -28,7 +28,7 @@ Job& Job::set_tmp_folder(std::string folder) {
     */
     auto status = fs::status(folder);
     if (!fs::exists(status)) {
-        std::cout << "`Job::set_tmp_folder`: provided folder don't exists, creating it" << std::endl;
+        std::cout << "`Job::set_tmp_folder`: provided folder don't exist, creating it" << std::endl;
         fs::create_directories(folder);
     } else if (!fs::is_directory(status))
         throw std::runtime_error("`Job::set_tmp_folder`: provided folder is not a directory");
