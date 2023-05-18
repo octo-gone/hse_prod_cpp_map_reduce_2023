@@ -22,13 +22,19 @@ Job& Job::set_input_files(std::vector<std::string> filenames) {
                 + filename + "' don't exist or is not a regular file, excluding it");
 #endif
         else
-            _filenames.push_back(filename);
+            _filenames.push_back(fs::absolute(filename));
     }
     return *this;
 }
 
 Job& Job::set_output_file(std::string filename) {
-    _output_file = filename;
+    auto folder = fs::absolute(filename).parent_path();
+    auto status = fs::status(folder);
+    if (!fs::exists(status)) {
+        std::cout << "`Job::set_output_file`: provided result folder don't exist, creating it" << std::endl;
+        fs::create_directories(folder);
+    }
+    _output_file = fs::absolute(filename);
     return *this;
 }
 
@@ -36,10 +42,10 @@ Job& Job::set_tmp_folder(std::string folder) {
     auto status = fs::status(folder);
     if (!fs::exists(status)) {
         std::cout << "`Job::set_tmp_folder`: provided folder don't exist, creating it" << std::endl;
-        fs::create_directories(folder);
+        fs::create_directories(fs::absolute(folder));
     } else if (!fs::is_directory(status))
         throw std::runtime_error("`Job::set_tmp_folder`: provided folder is not a directory");
-    _tmp_folder = folder;
+    _tmp_folder = fs::absolute(folder);
     return *this;
 }
 
@@ -65,17 +71,15 @@ Job& Job::set_reducer(Job::reducer_t callback) {
 
 void Job::write_map_to_file(std::map<Job::K, Job::V>& m, std::string filename) {
     std::ofstream file(filename);
-    file << "{" << std::endl;
     for (auto &el : m) {
-        file << "  \"" << el.first << "\" : " << el.second << "," << std::endl;
+        file << el.first << ": " << el.second << "," << std::endl;
     }
-    file << "}" << std::endl;
 }
 
 void show_map(std::map<Job::K, Job::V>& m) {
     std::cout << "{" << std::endl;
     for (auto &el : m) {
-        std::cout << "  \"" << el.first << "\" : " << el.second << "," << std::endl;
+        std::cout << "  \"" << el.first << "\": " << el.second << "," << std::endl;
     }
     std::cout << "}" << std::endl;
 }

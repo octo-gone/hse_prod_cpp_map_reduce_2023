@@ -1,4 +1,5 @@
 #include "map_reduce/map_reduce.hpp"
+#include <regex>
 
 int main() {
     Job j;
@@ -10,11 +11,13 @@ int main() {
         .set_mapper([](std::string text_split) {
             std::map<std::string, size_t> pair_accum{};
 
-            // splits by any space char
-            std::stringstream ss(text_split);
+            std::regex word_regex("(\\b\\w+\\b)");
+            auto words_begin = std::sregex_iterator(text_split.begin(), text_split.end(), word_regex);
+            auto words_end = std::sregex_iterator();
             std::string word;
-
-            while (ss >> word) {
+            for (std::sregex_iterator i = words_begin; i != words_end; ++i) {
+                std::smatch match = *i;
+                std::string word = match.str();
                 if (pair_accum.find(word) != pair_accum.end())
                     pair_accum[word] += 1;
                 else
