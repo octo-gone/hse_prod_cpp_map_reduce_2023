@@ -12,7 +12,7 @@ FetchContent_MakeAvailable(googletest)
 # Configure tests executable
 include(GoogleTest)
 add_executable(map_reduce_test ${MAP_REDUCE_TEST_SRC_FILES})
-target_link_libraries(map_reduce_test GTest::gtest_main)
+target_link_libraries(map_reduce_test GTest::gtest_main map_reduce_lib)
 
 set_target_properties(map_reduce_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 

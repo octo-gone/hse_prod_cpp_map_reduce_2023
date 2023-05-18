@@ -72,8 +72,9 @@ Job& Job::set_reducer(Job::reducer_t callback) {
 void Job::write_map_to_file(std::map<Job::K, Job::V>& m, std::string filename) {
     std::ofstream file(filename);
     for (auto &el : m) {
-        file << el.first << ": " << el.second << "," << std::endl;
+        file << el.first << ": " << el.second << std::endl;
     }
+    file.close();
 }
 
 void show_map(std::map<Job::K, Job::V>& m) {

@@ -9,7 +9,7 @@ int main() {
         .set_max_mappers(4)
         .set_max_reducers(4)
         .set_mapper([](std::string text_split) {
-            std::map<std::string, size_t> pair_accum{};
+            Job::pairs_t pair_accum{};
 
             std::regex word_regex("(\\b\\w+\\b)");
             auto words_begin = std::sregex_iterator(text_split.begin(), text_split.end(), word_regex);
@@ -26,8 +26,8 @@ int main() {
 
             return pair_accum;
         })
-        .set_reducer([](std::string key, std::vector<size_t> values) {
-            size_t value = 0;
+        .set_reducer([](Job::K key, std::vector<Job::V> values) {
+            Job::V value = 0;
             for (auto &v : values) {
                 value += v;
             }

@@ -36,3 +36,5 @@ public:
 private:
     void write_map_to_file(std::map<Job::K, Job::V>&, std::string);
 };
+
+void show_map(std::map<Job::K, Job::V>&);
