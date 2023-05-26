@@ -221,6 +221,22 @@ TEST_F(MapReduceTest, NotEmptyingFolder) {
     }
 }
 
+TEST_F(MapReduceTest, Exception) {
+#ifdef NDEBUG
+    {
+        Job j;
+        ASSERT_THROW(j.set_input_files({"testfiles/hello.txt"}), std::runtime_error);
+    }
+#endif
+    {
+        Job j;
+        std::vector<std::string> in = {"some"};
+        create_file(in, "testfiles/input.txt");
+        ASSERT_THROW(j.set_tmp_folder("testfiles/input.txt"), std::runtime_error);
+    }
+}
+
+
 int main(int argc, char** argv) {
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
