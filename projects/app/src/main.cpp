@@ -1,11 +1,26 @@
 #include "map_reduce/map_reduce.hpp"
 #include <regex>
 
-int main() {
+int main(int argc, char *argv[]) {
+    if (argc < 4) {
+        throw std::runtime_error("`main`: not enough arguments");
+    }
+    std::vector<std::string> input_files;
+    std::string tmp_folder, output_file;
+    for (auto i = 1; i < argc; i++) {
+        if (i == argc - 1) {
+            output_file = argv[i];
+        }
+        else if (i == argc - 2) {
+            tmp_folder = argv[i];
+        }
+        else
+            input_files.push_back(argv[i]);
+    }
     Job j;
-    j.set_input_files({"../examples/war_and_peace.txt"})
-        .set_output_file("../output/result.txt")
-        .set_tmp_folder("../output/split")
+    j.set_input_files(input_files)
+        .set_output_file(output_file)
+        .set_tmp_folder(tmp_folder)
         .set_max_mappers(4)
         .set_max_reducers(4)
         .set_mapper([](std::string text_split) {
